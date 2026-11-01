@@ -1,0 +1,1756 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ប្រព័ន្ធគ្រប់គ្រងវត្តមាន - Attendance Management Tool</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Kantumruy Pro (Khmer) & Inter (English) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Kantumruy+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Kantumruy Pro"', '"Inter"', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#2563eb',
+                            600: '#1d4ed8',
+                            700: '#1e40af',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Kantumruy Pro', 'Inter', sans-serif;
+            background-color: #dde1e7;
+            color: #1e293b;
+        }
+
+        /* Smooth custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Metallic/Soft Glass Card aesthetic matching the mockup */
+        .workspace-bg {
+            background: linear-gradient(145deg, #d5d9df 0%, #e2e6ec 50%, #d1d5db 100%);
+        }
+        
+        .kpi-card {
+            background: linear-gradient(180deg, #e8ebf0 0%, #dcdfe6 100%);
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+            transition: all 0.2s ease;
+        }
+        .kpi-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.09), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        }
+        .kpi-card.active-filter {
+            ring: 2px solid #2563eb;
+            background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+        }
+
+        .table-panel {
+            background: linear-gradient(180deg, #e6e9ef 0%, #dcdfe6 100%);
+            border: 1px solid rgba(255, 255, 255, 0.65);
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        }
+
+        /* Modal Backdrop & Animation */
+        .modal-backdrop {
+            background-color: rgba(15, 23, 42, 0.45);
+            backdrop-filter: blur(3px);
+        }
+
+        @keyframes modalPop {
+            0% {
+                opacity: 0;
+                transform: scale(0.95) translateY(8px);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+        .animate-modal {
+            animation: modalPop 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        /* Dedicated Print Stylesheet */
+        @media print {
+            body {
+                background: #ffffff !important;
+                color: #000000 !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .print-only {
+                display: block !important;
+            }
+            .workspace-bg, .table-panel, .kpi-card {
+                background: #ffffff !important;
+                box-shadow: none !important;
+                border: none !important;
+            }
+            #mainContent {
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            table {
+                width: 100% !important;
+                border-collapse: collapse !important;
+            }
+            th, td {
+                border: 1px solid #94a3b8 !important;
+                padding: 8px 10px !important;
+                font-size: 12px !important;
+            }
+            thead th {
+                background-color: #f1f5f9 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .status-pill {
+                border: 1px solid #475569 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col md:flex-row overflow-x-hidden">
+
+    <!-- Mobile Sidebar Overlay -->
+    <div id="sidebarOverlay" onclick="toggleMobileSidebar()" class="fixed inset-0 bg-slate-900/50 z-30 hidden md:hidden no-print"></div>
+
+    <!-- ==================== LEFT SIDEBAR ==================== -->
+    <aside id="sidebar" class="fixed md:static inset-y-0 left-0 z-40 w-64 bg-white border-r border-slate-200 flex flex-col justify-between transform -translate-x-full md:translate-x-0 transition-transform duration-200 ease-in-out no-print select-none shrink-0">
+        <!-- Top Brand & Navigation -->
+        <div>
+            <!-- Brand Header -->
+            <div class="h-16 px-6 flex items-center justify-between border-b border-slate-100">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-purple-700 via-pink-600 to-amber-500 flex items-center justify-center text-white font-bold text-lg shadow-sm">
+                        A
+                    </div>
+                    <div>
+                        <span class="font-bold text-xl tracking-tight text-slate-800">Aesthetic</span>
+                        <span class="block text-[10px] text-slate-400 -mt-1 font-medium">HR & Attendance</span>
+                    </div>
+                </div>
+                <button onclick="toggleMobileSidebar()" class="md:hidden text-slate-400 hover:text-slate-600 p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Navigation Menu -->
+            <nav class="p-3 space-y-1.5 mt-2">
+                <button onclick="switchTab('dashboard')" id="nav-dashboard" class="w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-semibold transition-colors bg-blue-50 text-blue-700">
+                    <i class="fa-solid fa-house text-base w-5 text-center"></i>
+                    <span>ផ្ទាំងព័ត៌មាន (Dashboard)</span>
+                </button>
+
+                <button onclick="switchTab('attendance')" id="nav-attendance" class="w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors">
+                    <i class="fa-regular fa-calendar-check text-base w-5 text-center"></i>
+                    <span>វត្តមាន (Attendance)</span>
+                </button>
+
+                <button onclick="switchTab('names')" id="nav-names" class="w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors">
+                    <i class="fa-regular fa-address-book text-base w-5 text-center"></i>
+                    <div class="flex-1 text-left flex items-center justify-between">
+                        <span>កំណត់ត្រាឈ្មោះ (Staff)</span>
+                        <span id="staffCountBadge" class="bg-slate-200 text-slate-700 text-xs px-2 py-0.5 rounded-full font-semibold">0</span>
+                    </div>
+                </button>
+
+                <button onclick="switchTab('settings')" id="nav-settings" class="w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors">
+                    <i class="fa-solid fa-gear text-base w-5 text-center"></i>
+                    <span>ការកំណត់ (Settings)</span>
+                </button>
+            </nav>
+
+            <!-- Quick Summary Box in Sidebar -->
+            <div class="mx-4 mt-6 p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
+                <div class="flex items-center justify-between text-xs text-slate-500 mb-1.5">
+                    <span>ទិន្នន័យសរុប (Total)</span>
+                    <span id="sidebarTotalRecords" class="font-bold text-slate-700">0 កំណត់ត្រា</span>
+                </div>
+                <div class="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden flex">
+                    <div id="barPresent" class="bg-emerald-600 h-full transition-all duration-300" style="width: 70%"></div>
+                    <div id="barLate" class="bg-amber-500 h-full transition-all duration-300" style="width: 15%"></div>
+                    <div id="barAbsent" class="bg-red-600 h-full transition-all duration-300" style="width: 15%"></div>
+                </div>
+                <p class="text-[11px] text-slate-400 mt-2 leading-relaxed">
+                    ទិន្នន័យត្រូវបានរក្សាទុកដោយស្វ័យប្រវត្តិក្នុង Browser (LocalStorage)។
+                </p>
+            </div>
+        </div>
+
+        <!-- Bottom Status Badges (Matching Mockup) -->
+        <div class="p-4 space-y-2 border-t border-slate-100">
+            <div class="w-full py-1.5 px-3 bg-slate-100 border border-slate-300/80 rounded-lg text-center text-xs font-medium text-slate-700 shadow-inner flex items-center justify-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>LocalStorage Enabled</span>
+            </div>
+            <div class="w-full py-1.5 px-3 bg-slate-100 border border-slate-300/80 rounded-lg text-center text-xs font-medium text-slate-700 shadow-inner">
+                HTML + CSS + JavaScript
+            </div>
+        </div>
+    </aside>
+
+    <!-- ==================== MAIN CONTENT AREA ==================== -->
+    <main id="mainContent" class="flex-1 flex flex-col workspace-bg min-h-screen overflow-x-hidden">
+        
+        <!-- Top Header Bar -->
+        <header class="h-16 px-4 sm:px-7 bg-[#d2d6dc] border-b border-slate-300/90 flex items-center justify-between shadow-sm no-print">
+            <div class="flex items-center gap-3">
+                <button onclick="toggleMobileSidebar()" class="md:hidden p-2 rounded-lg bg-white/70 text-slate-700 hover:bg-white">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <h1 class="text-base sm:text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
+                    ប្រព័ន្ធគ្រប់គ្រងវត្តមាន <span class="font-semibold text-slate-800 text-sm sm:text-lg">(Attendance Management Tool)</span>
+                </h1>
+            </div>
+
+            <!-- Right Profile & Notification Icons -->
+            <div class="flex items-center gap-4">
+                <button onclick="openAddModal()" title="បន្ថែមវត្តមានរហ័ស" class="hidden sm:flex items-center gap-1.5 text-xs font-medium bg-white/80 hover:bg-white text-slate-700 px-3 py-1.5 rounded-full border border-slate-300 shadow-sm transition">
+                    <i class="fa-regular fa-clock text-blue-600"></i>
+                    <span id="liveClockDisplay">--:--</span>
+                </button>
+
+                <!-- Notification Bell -->
+                <button onclick="showToast('ប្រព័ន្ធដំណើរការធម្មតា - ទិន្នន័យទាំងអស់ត្រូវបានរក្សាទុកក្នុង LocalStorage', 'info')" class="relative p-2 text-slate-700 hover:text-slate-900 transition">
+                    <i class="fa-regular fa-bell text-xl"></i>
+                    <span class="absolute top-1 right-1 w-4 h-4 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center justify-center shadow">
+                        1
+                    </span>
+                </button>
+
+                <!-- User Profile -->
+                <div class="flex items-center gap-2 cursor-pointer select-none" onclick="switchTab('settings')">
+                    <div class="w-9 h-9 rounded-full bg-gradient-to-br from-blue-600 to-indigo-800 text-white font-bold flex items-center justify-center shadow-md border-2 border-white text-sm">
+                        HR
+                    </div>
+                    <i class="fa-solid fa-chevron-down text-xs text-slate-600 hidden sm:inline"></i>
+                </div>
+            </div>
+        </header>
+
+        <!-- Print-Only Official Report Header -->
+        <div class="hidden print-only mb-6 border-b-2 border-slate-800 pb-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold">របាយការណ៍វត្តមានបុគ្គលិក / សិស្ស (Attendance Report)</h1>
+                    <p class="text-sm text-slate-600 mt-1">ប្រព័ន្ធគ្រប់គ្រងវត្តមាន (Attendance Management Tool)</p>
+                </div>
+                <div class="text-right text-xs text-slate-600">
+                    <p>កាលបរិច្ឆេទបោះពុម្ព (Printed Date): <span id="printTimestamp" class="font-semibold"></span></p>
+                    <p id="printFilterSummary" class="mt-0.5">ទិន្នន័យទាំងអស់ (All Records)</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-4 gap-4 mt-4 pt-3 border-t border-slate-300 text-sm">
+                <div>សរុប (Total): <strong id="printTotalCount">0</strong></div>
+                <div>វត្តមាន (Present): <strong id="printPresentCount">0</strong></div>
+                <div>អវត្តមាន (Absent): <strong id="printAbsentCount">0</strong></div>
+                <div>មកយឺត (Late): <strong id="printLateCount">0</strong></div>
+            </div>
+        </div>
+
+        <!-- ==================== VIEW 1: DASHBOARD & ATTENDANCE (MAIN) ==================== -->
+        <div id="view-main" class="p-4 sm:p-6 space-y-5 flex-1">
+            
+            <!-- 3 KPI Summary Cards (Present, Absent, Late) -->
+            <section id="kpiSection" class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5 no-print">
+                
+                <!-- Card 1: Present -->
+                <div onclick="toggleCardStatusFilter('Present')" id="card-Present" title="ចុចដើម្បីច្រោះតែអ្នកវត្តមាន (Click to filter Present)" class="kpi-card rounded-xl p-5 flex items-center justify-between cursor-pointer">
+                    <div class="flex items-center gap-4">
+                        <div class="w-14 h-14 rounded-xl bg-[#15803d] text-white flex items-center justify-center shadow-md shrink-0">
+                            <i class="fa-solid fa-user-check text-2xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm sm:text-base font-bold text-slate-800">វត្តមាន (Present)</p>
+                            <h2 id="countPresent" class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight mt-0.5">0</h2>
+                        </div>
+                    </div>
+                    <div class="text-right self-end">
+                        <span class="inline-flex items-center gap-1 text-xs sm:text-sm font-semibold text-emerald-700">
+                            <i class="fa-solid fa-arrow-trend-up"></i>
+                            <span id="pctPresent">0%</span>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Card 2: Absent -->
+                <div onclick="toggleCardStatusFilter('Absent')" id="card-Absent" title="ចុចដើម្បីច្រោះតែអ្នកអវត្តមាន (Click to filter Absent)" class="kpi-card rounded-xl p-5 flex items-center justify-between cursor-pointer">
+                    <div class="flex items-center gap-4">
+                        <div class="w-14 h-14 rounded-xl bg-[#b91c1c] text-white flex items-center justify-center shadow-md shrink-0">
+                            <i class="fa-solid fa-hand text-2xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm sm:text-base font-bold text-slate-800">អវត្តមាន (Absent)</p>
+                            <h2 id="countAbsent" class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight mt-0.5">0</h2>
+                        </div>
+                    </div>
+                    <div class="text-right self-end">
+                        <span class="inline-flex items-center gap-1 text-xs sm:text-sm font-semibold text-red-700">
+                            <i class="fa-solid fa-arrow-trend-down"></i>
+                            <span id="pctAbsent">អវត្តមាន</span>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Card 3: Late -->
+                <div onclick="toggleCardStatusFilter('Late')" id="card-Late" title="ចុចដើម្បីច្រោះតែអ្នកមកយឺត (Click to filter Late)" class="kpi-card rounded-xl p-5 flex items-center justify-between cursor-pointer">
+                    <div class="flex items-center gap-4">
+                        <div class="w-14 h-14 rounded-xl bg-[#d97706] text-white flex items-center justify-center shadow-md shrink-0">
+                            <i class="fa-solid fa-clock text-2xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm sm:text-base font-bold text-slate-800">មកយឺត (Late)</p>
+                            <h2 id="countLate" class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight mt-0.5">0</h2>
+                        </div>
+                    </div>
+                    <div class="text-right self-end">
+                        <span class="inline-flex items-center gap-1 text-xs sm:text-sm font-semibold text-amber-700">
+                            <i class="fa-solid fa-arrow-trend-down"></i>
+                            <span id="pctLate">មកយឺត</span>
+                        </span>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- Main Table Container Panel -->
+            <section class="table-panel rounded-xl overflow-hidden">
+                
+                <!-- Toolbar: Search, Date Filter, Action Buttons -->
+                <div class="p-4 sm:p-5 border-b border-slate-300/80 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3.5 no-print">
+                    
+                    <!-- Left Filters: Search + Date Range + Status -->
+                    <div class="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5 flex-1">
+                        
+                        <!-- Search Input -->
+                        <div class="relative flex-1 min-w-[200px] max-w-xs">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                            <input 
+                                type="text" 
+                                id="searchInput" 
+                                oninput="renderAttendance()"
+                                placeholder="ស្វែងរក ID ឬ ឈ្មោះ..." 
+                                class="w-full pl-9 pr-8 py-2 bg-[#dfe3e8] focus:bg-white text-slate-800 placeholder-slate-500 text-sm rounded-lg border border-slate-400/70 focus:border-blue-600 focus:outline-none transition shadow-inner"
+                            >
+                            <button id="clearSearchBtn" onclick="clearSearch()" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs">
+                                <i class="fa-solid fa-circle-xmark"></i>
+                            </button>
+                        </div>
+
+                        <!-- Date Range / Filter Date Box -->
+                        <div class="flex items-center bg-[#dfe3e8] rounded-lg border border-slate-400/70 px-3 py-1.5 shadow-inner gap-2 flex-wrap sm:flex-nowrap">
+                            <span class="text-xs sm:text-sm text-slate-600 font-medium whitespace-nowrap">
+                                <i class="fa-regular fa-calendar mr-1 text-slate-500"></i>កាលបរិច្ឆេទ:
+                            </span>
+                            <input 
+                                type="date" 
+                                id="filterStartDate" 
+                                onchange="renderAttendance()"
+                                title="ចាប់ពីថ្ងៃ (Start Date)"
+                                class="bg-transparent text-slate-800 text-xs sm:text-sm font-medium focus:outline-none cursor-pointer"
+                            >
+                            <span class="text-slate-400 font-bold">–</span>
+                            <input 
+                                type="date" 
+                                id="filterEndDate" 
+                                onchange="renderAttendance()"
+                                title="ដល់ថ្ងៃ (End Date)"
+                                class="bg-transparent text-slate-800 text-xs sm:text-sm font-medium focus:outline-none cursor-pointer"
+                            >
+                        </div>
+
+                        <!-- Status Filter Dropdown -->
+                        <select 
+                            id="filterStatus" 
+                            onchange="renderAttendance()"
+                            class="bg-[#dfe3e8] text-slate-800 text-xs sm:text-sm font-medium px-3 py-2 rounded-lg border border-slate-400/70 focus:outline-none focus:border-blue-600 shadow-inner cursor-pointer"
+                        >
+                            <option value="ALL">ស្ថានភាពទាំងអស់ (All)</option>
+                            <option value="Present">វត្តមាន (Present)</option>
+                            <option value="Absent">អវត្តមាន (Absent)</option>
+                            <option value="Late">មកយឺត (Late)</option>
+                        </select>
+
+                        <!-- Reset Filter Button (shown when any filter is active) -->
+                        <button 
+                            id="resetFiltersBtn"
+                            onclick="resetAllFilters()" 
+                            class="hidden text-xs font-semibold text-blue-700 hover:text-blue-900 bg-blue-100/80 hover:bg-blue-200/80 px-3 py-2 rounded-lg transition whitespace-nowrap"
+                        >
+                            <i class="fa-solid fa-rotate-left mr-1"></i>បង្ហាញទាំងអស់
+                        </button>
+                    </div>
+
+                    <!-- Right Action Buttons: Add New, Export to Excel, Print -->
+                    <div class="flex flex-wrap items-center gap-2.5 shrink-0">
+                        <!-- Add Button -->
+                        <button 
+                            onclick="openAddModal()" 
+                            class="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-b from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 active:scale-[0.99] text-white font-semibold text-sm rounded-lg shadow-md border border-blue-800 transition"
+                        >
+                            <span>បន្ថែមថ្មី</span>
+                            <i class="fa-solid fa-plus text-xs"></i>
+                        </button>
+
+                        <!-- Export to Excel Button -->
+                        <button 
+                            onclick="exportToExcel()" 
+                            class="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-b from-[#15803d] to-[#166534] hover:from-[#166534] hover:to-[#14532d] active:scale-[0.99] text-white font-semibold text-sm rounded-lg shadow-md border border-emerald-900 transition"
+                        >
+                            <span>នាំចេញជា Excel</span>
+                        </button>
+
+                        <!-- Print Button -->
+                        <button 
+                            onclick="handlePrint()" 
+                            class="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-b from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 active:scale-[0.99] text-white font-semibold text-sm rounded-lg shadow-md border border-slate-800 transition"
+                        >
+                            <span>បោះពុម្ព</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Attendance Table -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-300 text-slate-800 text-xs sm:text-sm font-bold bg-slate-200/50">
+                                <th class="py-3.5 px-4 sm:px-5 whitespace-nowrap">ល.រ (ID) – ឈ្មោះ (Name)</th>
+                                <th class="py-3.5 px-4 whitespace-nowrap">កាលបរិច្ឆេទ (Date)</th>
+                                <th class="py-3.5 px-4 whitespace-nowrap">ម៉ោងចូល (Check-In)</th>
+                                <th class="py-3.5 px-4 whitespace-nowrap">ម៉ោងចេញ (Check-Out)</th>
+                                <th class="py-3.5 px-4 text-center whitespace-nowrap">ស្ថានភាព (Status)</th>
+                                <th class="py-3.5 px-4 text-center whitespace-nowrap no-print">សកម្មភាព (Actions)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="attendanceTableBody" class="divide-y divide-slate-300/80 text-sm text-slate-800">
+                            <!-- Dynamically populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Empty State (Hidden when rows exist) -->
+                <div id="emptyState" class="hidden py-12 px-4 text-center">
+                    <div class="w-16 h-16 rounded-full bg-slate-200 text-slate-400 flex items-center justify-center mx-auto mb-3 text-2xl">
+                        <i class="fa-regular fa-folder-open"></i>
+                    </div>
+                    <h3 class="text-base font-bold text-slate-700">មិនមានទិន្នន័យវត្តមានទេ (No Attendance Records Found)</h3>
+                    <p class="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+                        សូមសាកល្បងប្ដូរពាក្យស្វែងរក ឬកាលបរិច្ឆេទ ឬចុចប៊ូតុង "បន្ថែមថ្មី +" ដើម្បីបញ្ចូលទិន្នន័យវត្តមានថ្មី។
+                    </p>
+                    <button onclick="resetAllFilters()" class="mt-4 px-4 py-2 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition">
+                        បង្ហាញទិន្នន័យទាំងអស់វិញ
+                    </button>
+                </div>
+
+                <!-- Table Footer Info -->
+                <div class="px-5 py-3 bg-slate-200/60 border-t border-slate-300/80 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-600 gap-2 no-print">
+                    <div>
+                        បង្ហាញ <strong id="showingCount" class="text-slate-900">0</strong> នៃទិន្នន័យសរុប <strong id="totalCount" class="text-slate-900">0</strong> កំណត់ត្រា
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <span class="inline-flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-[#15803d]"></span> Present
+                        </span>
+                        <span class="inline-flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-[#d97706]"></span> Late
+                        </span>
+                        <span class="inline-flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-[#b91c1c]"></span> Absent
+                        </span>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- ==================== VIEW 2: MANAGE SAVED NAMES (បញ្ជីឈ្មោះ) ==================== -->
+        <div id="view-names" class="hidden p-4 sm:p-6 space-y-5 flex-1 no-print">
+            <div class="table-panel rounded-xl p-5 sm:p-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-300">
+                    <div>
+                        <h2 class="text-lg sm:text-xl font-bold text-slate-900">
+                            <i class="fa-regular fa-address-book text-blue-600 mr-2"></i>បញ្ជីឈ្មោះបុគ្គលិក / សិស្ស (Saved Staff & Students)
+                        </h2>
+                        <p class="text-xs sm:text-sm text-slate-600 mt-1">
+                            ឈ្មោះដែលបានបញ្ចូលម្ដង នឹងត្រូវបានរក្សាទុកក្នុងបញ្ជីនេះដោយស្វ័យប្រវត្តិ ដើម្បីងាយស្រួលជ្រើសរើសនៅពេលក្រោយ (បញ្ចូលម្ដងអាចជ្រើសរើសបាន)។
+                        </p>
+                    </div>
+                    <button onclick="switchTab('dashboard')" class="self-start sm:self-auto px-3.5 py-2 bg-slate-700 text-white text-xs font-semibold rounded-lg hover:bg-slate-800 transition">
+                        <i class="fa-solid fa-arrow-left mr-1.5"></i>ត្រឡប់ទៅតារាងវត្តមាន
+                    </button>
+                </div>
+
+                <!-- Quick Add Staff Form -->
+                <form onsubmit="handleAddStaffDirectory(event)" class="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3 bg-white/70 p-4 rounded-xl border border-slate-300">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">អត្តសញ្ញាណ (ID)</label>
+                        <input type="text" id="dirStaffId" required placeholder="ឧ. #010" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:border-blue-600 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">ឈ្មោះពេញ (Full Name - Khmer/English)</label>
+                        <input type="text" id="dirStaffName" required placeholder="ឧ. កែវ សុផាត (Keo Sophat)" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:border-blue-600 focus:outline-none">
+                    </div>
+                    <div class="flex items-end">
+                        <button type="submit" class="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-lg shadow transition">
+                            <i class="fa-solid fa-user-plus mr-1.5"></i>បន្ថែមទៅក្នុងបញ្ជីជ្រើសរើស
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Saved Names List -->
+                <div id="staffDirectoryGrid" class="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <!-- Populated via JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== VIEW 3: SETTINGS & DATA MANAGEMENT (ការកំណត់) ==================== -->
+        <div id="view-settings" class="hidden p-4 sm:p-6 space-y-5 flex-1 no-print">
+            <div class="table-panel rounded-xl p-5 sm:p-6 max-w-3xl">
+                <h2 class="text-lg sm:text-xl font-bold text-slate-900 pb-3 border-b border-slate-300">
+                    <i class="fa-solid fa-gear text-slate-700 mr-2"></i>ការកំណត់ និងគ្រប់គ្រងទិន្នន័យ (Settings & LocalStorage)
+                </h2>
+
+                <div class="mt-5 space-y-4">
+                    <!-- Option 1: Reset to Default Sample Data -->
+                    <div class="p-4 bg-white/80 rounded-xl border border-slate-300 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-sm">ស្ដារទិន្នន័យគំរូដើម (Restore Sample Data)</h3>
+                            <p class="text-xs text-slate-500 mt-0.5">
+                                បញ្ចូលទិន្នន័យគំរូដើមទាំង 9 កំណត់ត្រាឡើងវិញ សម្រាប់ធ្វើតេស្ត ឬបង្ហាញ (Demo)។
+                            </p>
+                        </div>
+                        <button onclick="restoreSampleData()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow transition whitespace-nowrap">
+                            <i class="fa-solid fa-rotate mr-1.5"></i>ស្ដារទិន្នន័យគំរូ
+                        </button>
+                    </div>
+
+                    <!-- Option 2: Export / Backup JSON -->
+                    <div class="p-4 bg-white/80 rounded-xl border border-slate-300 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-sm">ទាញយកទិន្នន័យបម្រុងទុក (Backup JSON)</h3>
+                            <p class="text-xs text-slate-500 mt-0.5">
+                                រក្សាទុកទិន្នន័យវត្តមាន និងបញ្ជីឈ្មោះទាំងអស់ជាឯកសារ JSON។
+                            </p>
+                        </div>
+                        <button onclick="exportBackupJSON()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow transition whitespace-nowrap">
+                            <i class="fa-solid fa-download mr-1.5"></i>ទាញយក JSON
+                        </button>
+                    </div>
+
+                    <!-- Option 3: Clear All Attendance Records -->
+                    <div class="p-4 bg-red-50/90 rounded-xl border border-red-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h3 class="font-bold text-red-800 text-sm">លុបទិន្នន័យវត្តមានទាំងអស់ (Clear All Attendance)</h3>
+                            <p class="text-xs text-red-600 mt-0.5">
+                                លុបកំណត់ត្រាវត្តមានទាំងអស់ចេញពី LocalStorage (បញ្ជីឈ្មោះនៅរក្សាទុកដដែល)។
+                            </p>
+                        </div>
+                        <button onclick="confirmClearAllData()" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg shadow transition whitespace-nowrap">
+                            <i class="fa-solid fa-trash-can mr-1.5"></i>លុបទិន្នន័យទាំងអស់
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- ==================== POPUP MODAL FORM (ADD / EDIT ATTENDANCE) ==================== -->
+    <div id="attendanceModal" class="fixed inset-0 z-50 modal-backdrop hidden flex items-center justify-center p-4 no-print">
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden animate-modal">
+            
+            <!-- Modal Header with Title and 'X' Close Button -->
+            <div class="px-6 pt-5 pb-4 flex items-center justify-between border-b border-slate-100">
+                <h3 id="modalTitle" class="text-xl font-bold text-slate-900">
+                    បន្ថែម / កែប្រែវត្តមាន
+                </h3>
+                <button 
+                    type="button" 
+                    onclick="closeAttendanceModal()" 
+                    title="បិទ (Close)"
+                    class="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition text-xl font-light"
+                >
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Modal Form Body -->
+            <form id="attendanceForm" onsubmit="handleSaveAttendance(event)" class="p-6 space-y-4">
+                <input type="hidden" id="editRecordUid" value="">
+
+                <!-- Row 1: ID & Name (Enter Once, Selectable Later) -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    
+                    <!-- Field 1: ID -->
+                    <div>
+                        <label for="inputId" class="block text-sm font-bold text-slate-800 mb-1.5">
+                            អត្តសញ្ញាណ (ID) <span class="text-red-500">*</span>
+                        </label>
+                        <input 
+                            type="text" 
+                            id="inputId" 
+                            required
+                            placeholder="#001"
+                            class="w-full px-3.5 py-2.5 bg-[#e2e6ee] focus:bg-white text-slate-900 font-semibold text-sm rounded-lg border border-slate-300 focus:border-blue-600 focus:outline-none transition"
+                        >
+                    </div>
+
+                    <!-- Field 2: Name (Selectable Dropdown + New Name Input) -->
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5">
+                            <label for="selectName" class="block text-sm font-bold text-slate-800">
+                                ឈ្មោះ (Name) <span class="text-red-500">*</span>
+                            </label>
+                            <button 
+                                type="button" 
+                                id="toggleNameModeBtn"
+                                onclick="toggleNewNameInput()" 
+                                class="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                            >
+                                <i class="fa-solid fa-plus-circle"></i>
+                                <span>បញ្ចូលឈ្មោះថ្មី</span>
+                            </button>
+                        </div>
+
+                        <!-- Mode A: Select from previously entered names -->
+                        <div id="selectNameWrapper">
+                            <select 
+                                id="selectName" 
+                                onchange="handleStaffSelectChange()"
+                                class="w-full px-3.5 py-2.5 bg-white text-slate-900 text-sm font-medium rounded-lg border border-slate-300 focus:border-blue-600 focus:outline-none transition cursor-pointer"
+                            >
+                                <!-- Populated dynamically from savedStaffList -->
+                            </select>
+                        </div>
+
+                        <!-- Mode B: Type a brand new name (automatically saved to selectable list on Save) -->
+                        <div id="newNameWrapper" class="hidden">
+                            <input 
+                                type="text" 
+                                id="inputNewName" 
+                                placeholder="វាយឈ្មោះថ្មី ឧ. សុខ វិសាល (Sok Visal)"
+                                class="w-full px-3.5 py-2.5 bg-blue-50/50 focus:bg-white text-slate-900 text-sm font-medium rounded-lg border border-blue-400 focus:border-blue-600 focus:outline-none transition"
+                            >
+                            <p class="text-[11px] text-blue-600 mt-1">
+                                <i class="fa-solid fa-circle-info mr-1"></i>ឈ្មោះនេះនឹងត្រូវរក្សាទុកសម្រាប់ជ្រើសរើសនៅពេលក្រោយ។
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Row 2: Date & Check-In Time -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    
+                    <!-- Field 3: Date -->
+                    <div>
+                        <label for="inputDate" class="block text-sm font-bold text-slate-800 mb-1.5">
+                            កាលបរិច្ឆេទ (Date) <span class="text-red-500">*</span>
+                        </label>
+                        <input 
+                            type="date" 
+                            id="inputDate" 
+                            required
+                            class="w-full px-3.5 py-2.5 bg-white text-slate-900 text-sm font-medium rounded-lg border border-slate-300 focus:border-blue-600 focus:outline-none transition"
+                        >
+                    </div>
+
+                    <!-- Field 4: Check-in -->
+                    <div>
+                        <label for="inputCheckIn" class="block text-sm font-bold text-slate-800 mb-1.5">
+                            ម៉ោងចូល (Check-In)
+                        </label>
+                        <input 
+                            type="time" 
+                            id="inputCheckIn" 
+                            class="w-full px-3.5 py-2.5 bg-white text-slate-900 text-sm font-medium rounded-lg border border-slate-300 focus:border-blue-600 focus:outline-none transition"
+                        >
+                    </div>
+                </div>
+
+                <!-- Row 3: Check-Out Time & Status -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    
+                    <!-- Field 5: Check-out -->
+                    <div>
+                        <label for="inputCheckOut" class="block text-sm font-bold text-slate-800 mb-1.5">
+                            ម៉ោងចេញ (Check-Out)
+                        </label>
+                        <input 
+                            type="time" 
+                            id="inputCheckOut" 
+                            class="w-full px-3.5 py-2.5 bg-white text-slate-900 text-sm font-medium rounded-lg border border-slate-300 focus:border-blue-600 focus:outline-none transition"
+                        >
+                    </div>
+
+                    <!-- Field 6: Status -->
+                    <div>
+                        <label for="inputStatus" class="block text-sm font-bold text-slate-800 mb-1.5">
+                            ស្ថានភាព (Status) <span class="text-red-500">*</span>
+                        </label>
+                        <select 
+                            id="inputStatus" 
+                            onchange="handleStatusChangeInModal()"
+                            required
+                            class="w-full px-3.5 py-2.5 bg-white text-slate-900 text-sm font-medium rounded-lg border border-slate-300 focus:border-blue-600 focus:outline-none transition cursor-pointer"
+                        >
+                            <option value="Present">Present (វត្តមាន)</option>
+                            <option value="Absent">Absent (អវត្តមាន)</option>
+                            <option value="Late">Late (មកយឺត)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Modal Footer Buttons: Save (រក្សាទុក) & Cancel (បោះបង់) -->
+                <div class="pt-4 flex items-center justify-end gap-3 border-t border-slate-100">
+                    <button 
+                        type="submit" 
+                        class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-bold text-sm rounded-lg shadow-md transition"
+                    >
+                        រក្សាទុក
+                    </button>
+                    <button 
+                        type="button" 
+                        onclick="closeAttendanceModal()" 
+                        class="px-6 py-2.5 bg-slate-500 hover:bg-slate-600 active:scale-[0.99] text-white font-bold text-sm rounded-lg shadow-md transition"
+                    >
+                        បោះបង់
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==================== CONFIRM DELETE MODAL (NO NATIVE CONFIRM) ==================== -->
+    <div id="confirmModal" class="fixed inset-0 z-50 modal-backdrop hidden flex items-center justify-center p-4 no-print">
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md p-6 animate-modal text-center">
+            <div class="w-14 h-14 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4 text-2xl">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h3 id="confirmModalTitle" class="text-lg font-bold text-slate-900">បញ្ជាក់ការលុប (Confirm Delete)</h3>
+            <p id="confirmModalMessage" class="text-sm text-slate-600 mt-2 leading-relaxed">
+                តើអ្នកពិតជាចង់លុបទិន្នន័យវត្តមាននេះមែនទេ?
+            </p>
+            <div class="mt-6 flex items-center justify-center gap-3">
+                <button 
+                    id="confirmModalYesBtn" 
+                    class="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-sm rounded-lg shadow transition"
+                >
+                    យល់ព្រមលុប (Delete)
+                </button>
+                <button 
+                    onclick="closeConfirmModal()" 
+                    class="px-5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-sm rounded-lg transition"
+                >
+                    បោះបង់ (Cancel)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== TOAST NOTIFICATION CONTAINER ==================== -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 no-print pointer-events-none"></div>
+
+    <!-- ==================== APPLICATION JAVASCRIPT ==================== -->
+    <script>
+        /******************************************************************
+         * 1. STORAGE KEYS & INITIAL SEED DATA (Matching Mockup & Spec)
+         ******************************************************************/
+        const STORAGE_KEY_ATTENDANCE = 'AMT_KH_ATTENDANCE_RECORDS_V1';
+        const STORAGE_KEY_STAFF      = 'AMT_KH_SAVED_STAFF_LIST_V1';
+
+        // Default selectable staff list ("បញ្ចូលម្ដងអាចជ្រើសរើសបាន")
+        const DEFAULT_STAFF_LIST = [
+            { id: '#001', name: 'សុខ វិសាល (Sok Visal)' },
+            { id: '#002', name: 'ចាន់ ស្រីនាង (Chan Sreyneang)' },
+            { id: '#003', name: 'ឡុង វិសាល (Long Visal)' },
+            { id: '#004', name: 'ប្រាក់ ស្រីភ័ក្រ (Prak Sreypheak)' },
+            { id: '#005', name: 'ម៉ារ៉ាភី ស្រីភ័ក្រ (Maraphi Sreypheak)' },
+            { id: '#006', name: 'ចាន់ ធ្វើនាង (Chan Thuonang)' },
+            { id: '#007', name: 'សុខ ផល (Sok Phal)' },
+            { id: '#008', name: 'ផ្លែកា វិលីកា (Phleka Vilika)' }
+        ];
+
+        // Default attendance records matching the UI mockup
+        const DEFAULT_ATTENDANCE_RECORDS = [
+            {
+                uid: 'rec-101',
+                id: '#001',
+                name: 'សុខ វិសាល (Sok Visal)',
+                date: '2026-10-31',
+                checkIn: '08:00',
+                checkOut: '17:00',
+                status: 'Present'
+            },
+            {
+                uid: 'rec-102',
+                id: '#002',
+                name: 'ចាន់ ស្រីនាង (Chan Sreyneang)',
+                date: '2026-10-31',
+                checkIn: '07:55',
+                checkOut: '17:00',
+                status: 'Present'
+            },
+            {
+                uid: 'rec-103',
+                id: '#003',
+                name: 'ចាន់ ស្រីនាង (Chan Sreyneang)',
+                date: '2026-10-30',
+                checkIn: '',
+                checkOut: '',
+                status: 'Absent'
+            },
+            {
+                uid: 'rec-104',
+                id: '#004',
+                name: 'ឡុង វិសាល (Long Visal)',
+                date: '2026-10-31',
+                checkIn: '08:00',
+                checkOut: '17:00',
+                status: 'Present'
+            },
+            {
+                uid: 'rec-105',
+                id: '#005',
+                name: 'ម៉ារ៉ាភី ស្រីភ័ក្រ (Maraphi Sreypheak)',
+                date: '2026-10-31',
+                checkIn: '08:35',
+                checkOut: '17:00',
+                status: 'Late'
+            },
+            {
+                uid: 'rec-106',
+                id: '#006',
+                name: 'ចាន់ ស្រីនាង (Chan Sreyneang)',
+                date: '2026-10-29',
+                checkIn: '',
+                checkOut: '',
+                status: 'Absent'
+            },
+            {
+                uid: 'rec-107',
+                id: '#007',
+                name: 'ចាន់ ធ្វើនាង (Chan Thuonang)',
+                date: '2026-10-31',
+                checkIn: '08:00',
+                checkOut: '17:00',
+                status: 'Present'
+            },
+            {
+                uid: 'rec-108',
+                id: '#008',
+                name: 'សុខ ផល (Sok Phal)',
+                date: '2026-10-31',
+                checkIn: '08:00',
+                checkOut: '13:00',
+                status: 'Present'
+            },
+            {
+                uid: 'rec-109',
+                id: '#009',
+                name: 'ផ្លែកា វិលីកា (Phleka Vilika)',
+                date: '2026-10-31',
+                checkIn: '09:00',
+                checkOut: '17:40',
+                status: 'Late'
+            }
+        ];
+
+        // Application State
+        let attendanceRecords = [];
+        let savedStaffList = [];
+        let isNewNameMode = false;
+
+        /******************************************************************
+         * 2. INITIALIZATION & LOCALSTORAGE PERSISTENCE
+         ******************************************************************/
+        window.addEventListener('DOMContentLoaded', () => {
+            loadDataFromLocalStorage();
+            updateLiveClock();
+            setInterval(updateLiveClock, 30000);
+            renderAttendance();
+            renderStaffDirectory();
+        });
+
+        function loadDataFromLocalStorage() {
+            try {
+                const rawAttendance = localStorage.getItem(STORAGE_KEY_ATTENDANCE);
+                const rawStaff = localStorage.getItem(STORAGE_KEY_STAFF);
+
+                if (rawAttendance) {
+                    attendanceRecords = JSON.parse(rawAttendance);
+                } else {
+                    attendanceRecords = [...DEFAULT_ATTENDANCE_RECORDS];
+                    saveAttendanceToLocalStorage();
+                }
+
+                if (rawStaff) {
+                    savedStaffList = JSON.parse(rawStaff);
+                } else {
+                    savedStaffList = [...DEFAULT_STAFF_LIST];
+                    saveStaffToLocalStorage();
+                }
+            } catch (err) {
+                console.error('Error accessing LocalStorage:', err);
+                attendanceRecords = [...DEFAULT_ATTENDANCE_RECORDS];
+                savedStaffList = [...DEFAULT_STAFF_LIST];
+            }
+        }
+
+        function saveAttendanceToLocalStorage() {
+            try {
+                localStorage.setItem(STORAGE_KEY_ATTENDANCE, JSON.stringify(attendanceRecords));
+            } catch (err) {
+                console.error('Failed to save attendance records:', err);
+            }
+        }
+
+        function saveStaffToLocalStorage() {
+            try {
+                localStorage.setItem(STORAGE_KEY_STAFF, JSON.stringify(savedStaffList));
+                const badge = document.getElementById('staffCountBadge');
+                if (badge) badge.textContent = savedStaffList.length;
+            } catch (err) {
+                console.error('Failed to save staff list:', err);
+            }
+        }
+
+        /**
+         * Ensures a staff member's Name and ID are stored in savedStaffList
+         * so that "បញ្ចូលម្ដងអាចជ្រើសរើសបាន" (enter once, selectable later) always works.
+         */
+        function ensureStaffSaved(id, name) {
+            const cleanName = (name || '').trim();
+            const cleanId = (id || '').trim();
+            if (!cleanName) return;
+
+            const existingIndex = savedStaffList.findIndex(
+                s => s.name.toLowerCase() === cleanName.toLowerCase()
+            );
+
+            if (existingIndex === -1) {
+                savedStaffList.push({ id: cleanId || generateNextId(), name: cleanName });
+            } else if (cleanId) {
+                savedStaffList[existingIndex].id = cleanId;
+            }
+            saveStaffToLocalStorage();
+            renderStaffDirectory();
+        }
+
+        /******************************************************************
+         * 3. FILTERING, KPI CALCULATION & TABLE RENDERING
+         ******************************************************************/
+        function getFilteredRecords() {
+            const query = (document.getElementById('searchInput').value || '').trim().toLowerCase();
+            const startDate = document.getElementById('filterStartDate').value;
+            const endDate = document.getElementById('filterEndDate').value;
+            const statusFilter = document.getElementById('filterStatus').value;
+
+            // Toggle visibility of Clear Search & Reset Filters buttons
+            document.getElementById('clearSearchBtn').classList.toggle('hidden', !query);
+            const hasAnyFilter = query !== '' || startDate !== '' || endDate !== '' || statusFilter !== 'ALL';
+            document.getElementById('resetFiltersBtn').classList.toggle('hidden', !hasAnyFilter);
+
+            // Highlight active KPI card if status filter is active
+            ['Present', 'Absent', 'Late'].forEach(st => {
+                const card = document.getElementById(`card-${st}`);
+                if (card) {
+                    card.classList.toggle('active-filter', statusFilter === st);
+                }
+            });
+
+            return attendanceRecords.filter(rec => {
+                // 1. Search by ID or Name
+                const matchesSearch = !query || 
+                    (rec.id && rec.id.toLowerCase().includes(query)) ||
+                    (rec.name && rec.name.toLowerCase().includes(query));
+
+                // 2. Filter by Date Range
+                let matchesDate = true;
+                if (startDate && rec.date < startDate) matchesDate = false;
+                if (endDate && rec.date > endDate) matchesDate = false;
+
+                // 3. Filter by Status
+                const matchesStatus = statusFilter === 'ALL' || rec.status === statusFilter;
+
+                return matchesSearch && matchesDate && matchesStatus;
+            });
+        }
+
+        function renderAttendance() {
+            const filtered = getFilteredRecords();
+            const tbody = document.getElementById('attendanceTableBody');
+            const emptyState = document.getElementById('emptyState');
+
+            // Calculate KPI counts based on filtered records (or all records when unfiltered)
+            const presentCount = filtered.filter(r => r.status === 'Present').length;
+            const absentCount  = filtered.filter(r => r.status === 'Absent').length;
+            const lateCount    = filtered.filter(r => r.status === 'Late').length;
+            const totalFiltered = filtered.length;
+
+            // Update Dashboard KPI Numbers
+            document.getElementById('countPresent').textContent = presentCount;
+            document.getElementById('countAbsent').textContent  = absentCount;
+            document.getElementById('countLate').textContent    = lateCount;
+
+            const presentPct = totalFiltered > 0 ? Math.round((presentCount / totalFiltered) * 100) : 0;
+            document.getElementById('pctPresent').textContent = `${presentPct}% (${presentCount})`;
+
+            // Update Sidebar summary bar
+            const totalAll = attendanceRecords.length;
+            document.getElementById('sidebarTotalRecords').textContent = `${totalAll} កំណត់ត្រា`;
+            document.getElementById('staffCountBadge').textContent = savedStaffList.length;
+
+            if (totalAll > 0) {
+                const allP = attendanceRecords.filter(r => r.status === 'Present').length;
+                const allL = attendanceRecords.filter(r => r.status === 'Late').length;
+                const allA = attendanceRecords.filter(r => r.status === 'Absent').length;
+                document.getElementById('barPresent').style.width = `${(allP / totalAll) * 100}%`;
+                document.getElementById('barLate').style.width    = `${(allL / totalAll) * 100}%`;
+                document.getElementById('barAbsent').style.width  = `${(allA / totalAll) * 100}%`;
+            }
+
+            // Update Print Summary counts
+            document.getElementById('printTotalCount').textContent   = totalFiltered;
+            document.getElementById('printPresentCount').textContent = presentCount;
+            document.getElementById('printAbsentCount').textContent  = absentCount;
+            document.getElementById('printLateCount').textContent    = lateCount;
+
+            // Update Table Footer counts
+            document.getElementById('showingCount').textContent = totalFiltered;
+            document.getElementById('totalCount').textContent   = totalAll;
+
+            // Render Table Rows
+            tbody.innerHTML = '';
+
+            if (filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            }
+            emptyState.classList.add('hidden');
+
+            filtered.forEach((rec) => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-white/60 transition-colors';
+
+                const formattedCheckIn  = formatTime12Hour(rec.checkIn, rec.status);
+                const formattedCheckOut = formatTime12Hour(rec.checkOut, rec.status);
+                const statusBadgeHTML   = getStatusBadgeHTML(rec.status);
+
+                tr.innerHTML = `
+                    <td class="py-3.5 px-4 sm:px-5 font-semibold text-slate-900">
+                        <span class="text-slate-600 font-bold">ID: ${escapeHTML(rec.id)}</span>
+                        <span class="mx-1 text-slate-400">–</span>
+                        <span>${escapeHTML(rec.name)}</span>
+                    </td>
+                    <td class="py-3.5 px-4 text-slate-800 font-medium whitespace-nowrap">
+                        ${escapeHTML(rec.date)}
+                    </td>
+                    <td class="py-3.5 px-4 text-slate-800 font-medium whitespace-nowrap">
+                        ${formattedCheckIn}
+                    </td>
+                    <td class="py-3.5 px-4 text-slate-800 font-medium whitespace-nowrap">
+                        ${formattedCheckOut}
+                    </td>
+                    <td class="py-3.5 px-4 text-center whitespace-nowrap">
+                        ${statusBadgeHTML}
+                    </td>
+                    <td class="py-3.5 px-4 text-center whitespace-nowrap no-print">
+                        <div class="inline-flex items-center justify-center gap-3">
+                            <button 
+                                onclick="openEditModal('${rec.uid}')" 
+                                title="កែប្រែ (Edit)"
+                                class="text-slate-700 hover:text-blue-600 transition p-1"
+                            >
+                                <i class="fa-regular fa-pen-to-square text-base"></i>
+                            </button>
+                            <button 
+                                onclick="promptDeleteRecord('${rec.uid}')" 
+                                title="លុប (Delete)"
+                                class="text-red-600 hover:text-red-800 transition p-1"
+                            >
+                                <i class="fa-regular fa-trash-can text-base"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function getStatusBadgeHTML(status) {
+            if (status === 'Present') {
+                return `<span class="status-pill inline-block px-3.5 py-1 rounded-full text-xs font-bold bg-[#15803d] text-white shadow-sm">Present</span>`;
+            }
+            if (status === 'Absent') {
+                return `<span class="status-pill inline-block px-3.5 py-1 rounded-full text-xs font-bold bg-[#b91c1c] text-white shadow-sm">Absent</span>`;
+            }
+            if (status === 'Late') {
+                return `<span class="status-pill inline-block px-3.5 py-1 rounded-full text-xs font-bold bg-[#d97706] text-white shadow-sm">Late</span>`;
+            }
+            return `<span class="status-pill inline-block px-3 py-1 rounded-full text-xs font-bold bg-slate-500 text-white">${escapeHTML(status)}</span>`;
+        }
+
+        function formatTime12Hour(time24, status) {
+            if (!time24) {
+                return status === 'Absent' ? '<span class="text-slate-400">--:--</span>' : '<span class="text-slate-400">--:--</span>';
+            }
+            const parts = time24.split(':');
+            if (parts.length < 2) return escapeHTML(time24);
+            let hour = parseInt(parts[0], 10);
+            const minute = parts[1];
+            const ampm = hour >= 12 ? 'PM' : 'AM';
+            hour = hour % 12;
+            if (hour === 0) hour = 12;
+            const hourStr = hour < 10 ? '0' + hour : '' + hour;
+            return `${hourStr}:${minute} ${ampm}`;
+        }
+
+        /******************************************************************
+         * 4. ADD & EDIT POPUP MODAL LOGIC
+         ******************************************************************/
+        function populateModalStaffDropdown(selectedName = '') {
+            const select = document.getElementById('selectName');
+            select.innerHTML = '';
+
+            // Placeholder option
+            const defaultOpt = document.createElement('option');
+            defaultOpt.value = '';
+            defaultOpt.textContent = '-- ជ្រើសរើសឈ្មោះ (Select Name) --';
+            select.appendChild(defaultOpt);
+
+            savedStaffList.forEach(staff => {
+                const opt = document.createElement('option');
+                opt.value = staff.name;
+                opt.dataset.staffId = staff.id;
+                opt.textContent = `${staff.name} (${staff.id})`;
+                if (staff.name === selectedName) {
+                    opt.selected = true;
+                }
+                select.appendChild(opt);
+            });
+
+            // Option at bottom to switch to typing a new name
+            const addNewOpt = document.createElement('option');
+            addNewOpt.value = '__ADD_NEW_NAME__';
+            addNewOpt.textContent = '+ បញ្ចូលឈ្មោះថ្មី... (Add New Name)';
+            select.appendChild(addNewOpt);
+        }
+
+        function setModalNameMode(newMode) {
+            isNewNameMode = newMode;
+            const selectWrapper = document.getElementById('selectNameWrapper');
+            const newWrapper    = document.getElementById('newNameWrapper');
+            const toggleBtn     = document.getElementById('toggleNameModeBtn');
+            const selectEl      = document.getElementById('selectName');
+            const inputNewEl    = document.getElementById('inputNewName');
+
+            if (isNewNameMode) {
+                selectWrapper.classList.add('hidden');
+                newWrapper.classList.remove('hidden');
+                selectEl.removeAttribute('required');
+                inputNewEl.setAttribute('required', 'required');
+                toggleBtn.innerHTML = `<i class="fa-solid fa-list-ul"></i><span>ជ្រើសរើសពីបញ្ជី (${savedStaffList.length})</span>`;
+                setTimeout(() => inputNewEl.focus(), 50);
+            } else {
+                selectWrapper.classList.remove('hidden');
+                newWrapper.classList.add('hidden');
+                inputNewEl.removeAttribute('required');
+                selectEl.setAttribute('required', 'required');
+                toggleBtn.innerHTML = `<i class="fa-solid fa-plus-circle"></i><span>បញ្ចូលឈ្មោះថ្មី</span>`;
+            }
+        }
+
+        function toggleNewNameInput() {
+            setModalNameMode(!isNewNameMode);
+        }
+
+        function handleStaffSelectChange() {
+            const select = document.getElementById('selectName');
+            if (select.value === '__ADD_NEW_NAME__') {
+                select.value = '';
+                setModalNameMode(true);
+                document.getElementById('inputId').value = generateNextId();
+                return;
+            }
+
+            // Auto-fill ID when an existing person is chosen from dropdown
+            const selectedOption = select.options[select.selectedIndex];
+            if (selectedOption && selectedOption.dataset.staffId) {
+                document.getElementById('inputId').value = selectedOption.dataset.staffId;
+            }
+        }
+
+        function handleStatusChangeInModal() {
+            const status = document.getElementById('inputStatus').value;
+            const checkInEl = document.getElementById('inputCheckIn');
+            const checkOutEl = document.getElementById('inputCheckOut');
+
+            if (status === 'Absent') {
+                checkInEl.value = '';
+                checkOutEl.value = '';
+            } else if (!checkInEl.value) {
+                checkInEl.value = status === 'Late' ? '08:30' : '08:00';
+                checkOutEl.value = '17:00';
+            }
+        }
+
+        function generateNextId() {
+            let maxNum = 0;
+            attendanceRecords.forEach(r => {
+                const m = (r.id || '').match(/\d+/);
+                if (m) {
+                    const n = parseInt(m[0], 10);
+                    if (n > maxNum) maxNum = n;
+                }
+            });
+            savedStaffList.forEach(s => {
+                const m = (s.id || '').match(/\d+/);
+                if (m) {
+                    const n = parseInt(m[0], 10);
+                    if (n > maxNum) maxNum = n;
+                }
+            });
+            const next = maxNum + 1;
+            return '#' + String(next).padStart(3, '0');
+        }
+
+        function getTodayISO() {
+            const d = new Date();
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function openAddModal() {
+            document.getElementById('modalTitle').textContent = 'បន្ថែម / កែប្រែវត្តមាន (Add Attendance)';
+            document.getElementById('editRecordUid').value = '';
+            document.getElementById('inputId').value = generateNextId();
+            document.getElementById('inputNewName').value = '';
+            document.getElementById('inputDate').value = getTodayISO();
+            document.getElementById('inputCheckIn').value = '08:00';
+            document.getElementById('inputCheckOut').value = '17:00';
+            document.getElementById('inputStatus').value = 'Present';
+
+            populateModalStaffDropdown('');
+            setModalNameMode(savedStaffList.length === 0);
+
+            document.getElementById('attendanceModal').classList.remove('hidden');
+        }
+
+        function openEditModal(uid) {
+            const rec = attendanceRecords.find(r => r.uid === uid);
+            if (!rec) return;
+
+            // Make sure this record's name is in savedStaffList so it can be selected
+            ensureStaffSaved(rec.id, rec.name);
+
+            document.getElementById('modalTitle').textContent = 'បន្ថែម / កែប្រែវត្តមាន (Edit Attendance)';
+            document.getElementById('editRecordUid').value = rec.uid;
+            document.getElementById('inputId').value = rec.id;
+            document.getElementById('inputNewName').value = '';
+            document.getElementById('inputDate').value = rec.date;
+            document.getElementById('inputCheckIn').value = rec.checkIn || '';
+            document.getElementById('inputCheckOut').value = rec.checkOut || '';
+            document.getElementById('inputStatus').value = rec.status;
+
+            populateModalStaffDropdown(rec.name);
+            setModalNameMode(false);
+
+            document.getElementById('attendanceModal').classList.remove('hidden');
+        }
+
+        function closeAttendanceModal() {
+            document.getElementById('attendanceModal').classList.add('hidden');
+        }
+
+        function handleSaveAttendance(event) {
+            event.preventDefault();
+
+            const editUid  = document.getElementById('editRecordUid').value;
+            let idVal      = document.getElementById('inputId').value.trim();
+            const dateVal  = document.getElementById('inputDate').value;
+            const checkIn  = document.getElementById('inputCheckIn').value;
+            const checkOut = document.getElementById('inputCheckOut').value;
+            const status   = document.getElementById('inputStatus').value;
+
+            let nameVal = '';
+            if (isNewNameMode) {
+                nameVal = document.getElementById('inputNewName').value.trim();
+            } else {
+                nameVal = document.getElementById('selectName').value.trim();
+            }
+
+            if (!nameVal) {
+                showToast('សូមជ្រើសរើស ឬបញ្ចូលឈ្មោះជាមុនសិន!', 'error');
+                return;
+            }
+
+            if (!idVal.startsWith('#')) {
+                idVal = '#' + idVal;
+            }
+
+            // Save name to selectable staff directory ("បញ្ចូលម្ដងអាចជ្រើសរើសបាន")
+            ensureStaffSaved(idVal, nameVal);
+
+            if (editUid) {
+                // Update existing record
+                const idx = attendanceRecords.findIndex(r => r.uid === editUid);
+                if (idx !== -1) {
+                    attendanceRecords[idx] = {
+                        ...attendanceRecords[idx],
+                        id: idVal,
+                        name: nameVal,
+                        date: dateVal,
+                        checkIn,
+                        checkOut,
+                        status
+                    };
+                    showToast(`បានកែប្រែវត្តមាន "${nameVal}" ដោយជោគជ័យ!`, 'success');
+                }
+            } else {
+                // Create new record at top of table
+                const newRecord = {
+                    uid: 'rec-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+                    id: idVal,
+                    name: nameVal,
+                    date: dateVal,
+                    checkIn,
+                    checkOut,
+                    status
+                };
+                attendanceRecords.unshift(newRecord);
+                showToast(`បានបន្ថែមវត្តមាន "${nameVal}" ដោយជោគជ័យ!`, 'success');
+            }
+
+            saveAttendanceToLocalStorage();
+            renderAttendance();
+            closeAttendanceModal();
+        }
+
+        /******************************************************************
+         * 5. DELETE CONFIRMATION MODAL LOGIC
+         ******************************************************************/
+        let pendingConfirmAction = null;
+
+        function promptDeleteRecord(uid) {
+            const rec = attendanceRecords.find(r => r.uid === uid);
+            if (!rec) return;
+
+            document.getElementById('confirmModalTitle').textContent = 'បញ្ជាក់ការលុបវត្តមាន';
+            document.getElementById('confirmModalMessage').innerHTML = 
+                `តើអ្នកពិតជាចង់លុបកំណត់ត្រាវត្តមានរបស់ <strong>${escapeHTML(rec.id)} - ${escapeHTML(rec.name)}</strong> នៅថ្ងៃទី <strong>${escapeHTML(rec.date)}</strong> មែនទេ?`;
+
+            pendingConfirmAction = () => {
+                attendanceRecords = attendanceRecords.filter(r => r.uid !== uid);
+                saveAttendanceToLocalStorage();
+                renderAttendance();
+                showToast('បានលុបទិន្នន័យវត្តមានរួចរាល់!', 'info');
+            };
+
+            document.getElementById('confirmModal').classList.remove('hidden');
+        }
+
+        document.getElementById('confirmModalYesBtn').addEventListener('click', () => {
+            if (typeof pendingConfirmAction === 'function') {
+                pendingConfirmAction();
+            }
+            closeConfirmModal();
+        });
+
+        function closeConfirmModal() {
+            document.getElementById('confirmModal').classList.add('hidden');
+            pendingConfirmAction = null;
+        }
+
+        /******************************************************************
+         * 6. FILTER HELPERS (SEARCH, DATE, CARD CLICK)
+         ******************************************************************/
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            renderAttendance();
+        }
+
+        function resetAllFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('filterStartDate').value = '';
+            document.getElementById('filterEndDate').value = '';
+            document.getElementById('filterStatus').value = 'ALL';
+            renderAttendance();
+            showToast('បានបង្ហាញទិន្នន័យទាំងអស់ឡើងវិញ', 'info');
+        }
+
+        function toggleCardStatusFilter(status) {
+            const select = document.getElementById('filterStatus');
+            if (select.value === status) {
+                select.value = 'ALL';
+            } else {
+                select.value = status;
+            }
+            renderAttendance();
+        }
+
+        /******************************************************************
+         * 7. EXPORT TO EXCEL & PRINT FUNCTIONALITY
+         ******************************************************************/
+        function exportToExcel() {
+            const filtered = getFilteredRecords();
+            if (filtered.length === 0) {
+                showToast('មិនមានទិន្នន័យសម្រាប់នាំចេញទៅ Excel ទេ!', 'error');
+                return;
+            }
+
+            // Build an HTML table with UTF-8 encoding and Excel XML namespaces so Microsoft Excel
+            // opens Khmer Unicode script cleanly with proper column widths and colors.
+            let tableRowsHTML = '';
+            filtered.forEach((rec, index) => {
+                const bgStatus = rec.status === 'Present' ? '#dcfce7' : (rec.status === 'Absent' ? '#fee2e2' : '#fef3c7');
+                const txtStatus = rec.status === 'Present' ? '#166534' : (rec.status === 'Absent' ? '#991b1b' : '#92400e');
+
+                tableRowsHTML += `
+                    <tr>
+                        <td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">${index + 1}</td>
+                        <td style="border:1px solid #cbd5e1; padding:6px; font-weight:bold;">${escapeHTML(rec.id)}</td>
+                        <td style="border:1px solid #cbd5e1; padding:6px;">${escapeHTML(rec.name)}</td>
+                        <td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">${escapeHTML(rec.date)}</td>
+                        <td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">${formatTime12Hour(rec.checkIn, rec.status).replace(/<[^>]*>/g, '')}</td>
+                        <td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">${formatTime12Hour(rec.checkOut, rec.status).replace(/<[^>]*>/g, '')}</td>
+                        <td style="border:1px solid #cbd5e1; padding:6px; text-align:center; background-color:${bgStatus}; color:${txtStatus}; font-weight:bold;">
+                            ${escapeHTML(rec.status)}
+                        </td>
+                    </tr>
+                `;
+            });
+
+            const excelTemplate = `
+                <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+                <head>
+                    <meta charset="UTF-8">
+                    <!--[if gte mso 9]>
+                    <xml>
+                        <x:ExcelWorkbook>
+                            <x:ExcelWorksheets>
+                                <x:ExcelWorksheet>
+                                    <x:Name>Attendance Report</x:Name>
+                                    <x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+                                </x:ExcelWorksheet>
+                            </x:ExcelWorksheets>
+                        </x:ExcelWorkbook>
+                    </xml>
+                    <![endif]-->
+                    <style>
+                        body, table { font-family: 'Kantumruy Pro', 'Khmer OS Siemreap', 'Inter', sans-serif; font-size: 11pt; }
+                    </style>
+                </head>
+                <body>
+                    <h2 style="margin-bottom:4px;">របាយការណ៍វត្តមាន (Attendance Management Report)</h2>
+                    <p style="margin-top:0; color:#475569;">កាលបរិច្ឆេទនាំចេញ: ${getTodayISO()} | ចំនួនសរុប: ${filtered.length} កំណត់ត្រា</p>
+                    <table style="border-collapse:collapse; width:100%;">
+                        <thead>
+                            <tr style="background-color:#1e293b; color:#ffffff; font-weight:bold;">
+                                <th style="border:1px solid #334155; padding:8px;">ល.រ (No)</th>
+                                <th style="border:1px solid #334155; padding:8px;">អត្តសញ្ញាណ (ID)</th>
+                                <th style="border:1px solid #334155; padding:8px;">ឈ្មោះ (Name)</th>
+                                <th style="border:1px solid #334155; padding:8px;">កាលបរិច្ឆេទ (Date)</th>
+                                <th style="border:1px solid #334155; padding:8px;">ម៉ោងចូល (Check-In)</th>
+                                <th style="border:1px solid #334155; padding:8px;">ម៉ោងចេញ (Check-Out)</th>
+                                <th style="border:1px solid #334155; padding:8px;">ស្ថានភាព (Status)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${tableRowsHTML}
+                        </tbody>
+                    </table>
+                </body>
+                </html>
+            `;
+
+            const blob = new Blob(['\uFEFF', excelTemplate], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `Attendance_Report_${getTodayISO()}.xls`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            showToast('បាននាំចេញឯកសារ Excel ដោយជោគជ័យ!', 'success');
+        }
+
+        function handlePrint() {
+            const now = new Date();
+            document.getElementById('printTimestamp').textContent = now.toLocaleString('km-KH');
+
+            const startDate = document.getElementById('filterStartDate').value;
+            const endDate = document.getElementById('filterEndDate').value;
+            const status = document.getElementById('filterStatus').value;
+            let summaryParts = [];
+            if (startDate || endDate) summaryParts.push(`កាលបរិច្ឆេទ: ${startDate || '...'} ដល់ ${endDate || '...'}`);
+            if (status !== 'ALL') summaryParts.push(`ស្ថានភាព: ${status}`);
+            document.getElementById('printFilterSummary').textContent = summaryParts.length ? summaryParts.join(' | ') : 'ទិន្នន័យវត្តមានទាំងអស់ (All Filtered Records)';
+
+            window.print();
+        }
+
+        /******************************************************************
+         * 8. SIDEBAR NAVIGATION, STAFF DIRECTORY & SETTINGS
+         ******************************************************************/
+        function switchTab(tabName) {
+            const viewMain     = document.getElementById('view-main');
+            const viewNames    = document.getElementById('view-names');
+            const viewSettings = document.getElementById('view-settings');
+            const kpiSection   = document.getElementById('kpiSection');
+
+            // Reset nav button styles
+            ['dashboard', 'attendance', 'names', 'settings'].forEach(id => {
+                const btn = document.getElementById(`nav-${id}`);
+                if (btn) {
+                    btn.className = 'w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors';
+                }
+            });
+
+            const activeBtn = document.getElementById(`nav-${tabName}`);
+            if (activeBtn) {
+                activeBtn.className = 'w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-semibold transition-colors bg-blue-50 text-blue-700';
+            }
+
+            if (tabName === 'dashboard') {
+                viewMain.classList.remove('hidden');
+                kpiSection.classList.remove('hidden');
+                viewNames.classList.add('hidden');
+                viewSettings.classList.add('hidden');
+            } else if (tabName === 'attendance') {
+                viewMain.classList.remove('hidden');
+                kpiSection.classList.add('hidden');
+                viewNames.classList.add('hidden');
+                viewSettings.classList.add('hidden');
+            } else if (tabName === 'names') {
+                viewMain.classList.add('hidden');
+                viewNames.classList.remove('hidden');
+                viewSettings.classList.add('hidden');
+                document.getElementById('dirStaffId').value = generateNextId();
+                renderStaffDirectory();
+            } else if (tabName === 'settings') {
+                viewMain.classList.add('hidden');
+                viewNames.classList.add('hidden');
+                viewSettings.classList.remove('hidden');
+            }
+
+            // Close mobile sidebar if open
+            const sidebar = document.getElementById('sidebar');
+            if (!sidebar.classList.contains('-translate-x-full') && window.innerWidth < 768) {
+                toggleMobileSidebar();
+            }
+        }
+
+        function renderStaffDirectory() {
+            const grid = document.getElementById('staffDirectoryGrid');
+            if (!grid) return;
+            grid.innerHTML = '';
+
+            savedStaffList.forEach((staff, idx) => {
+                const card = document.createElement('div');
+                card.className = 'p-3.5 bg-white rounded-xl border border-slate-300 shadow-sm flex items-center justify-between gap-3';
+                card.innerHTML = `
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-10 h-10 rounded-lg bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center shrink-0">
+                            ${escapeHTML(staff.id)}
+                        </div>
+                        <div class="truncate">
+                            <p class="font-bold text-slate-800 text-sm truncate">${escapeHTML(staff.name)}</p>
+                            <p class="text-[11px] text-slate-500">អាចជ្រើសរើសបានក្នុងទម្រង់វត្តមាន</p>
+                        </div>
+                    </div>
+                    <button 
+                        onclick="removeStaffFromDirectory(${idx})" 
+                        title="លុបចេញពីបញ្ជីជ្រើសរើស"
+                        class="text-slate-400 hover:text-red-600 p-1.5 transition"
+                    >
+                        <i class="fa-regular fa-trash-can"></i>
+                    </button>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function handleAddStaffDirectory(e) {
+            e.preventDefault();
+            let id = document.getElementById('dirStaffId').value.trim();
+            const name = document.getElementById('dirStaffName').value.trim();
+            if (!id || !name) return;
+            if (!id.startsWith('#')) id = '#' + id;
+
+            ensureStaffSaved(id, name);
+            document.getElementById('dirStaffName').value = '';
+            document.getElementById('dirStaffId').value = generateNextId();
+            showToast(`បានបន្ថែម "${name}" ទៅក្នុងបញ្ជីជ្រើសរើស!`, 'success');
+        }
+
+        function removeStaffFromDirectory(index) {
+            const removed = savedStaffList[index];
+            if (!removed) return;
+            savedStaffList.splice(index, 1);
+            saveStaffToLocalStorage();
+            renderStaffDirectory();
+            showToast(`បានលុប "${removed.name}" ចេញពីបញ្ជីជ្រើសរើស`, 'info');
+        }
+
+        function restoreSampleData() {
+            attendanceRecords = [...DEFAULT_ATTENDANCE_RECORDS];
+            savedStaffList = [...DEFAULT_STAFF_LIST];
+            saveAttendanceToLocalStorage();
+            saveStaffToLocalStorage();
+            renderAttendance();
+            renderStaffDirectory();
+            switchTab('dashboard');
+            showToast('បានស្ដារទិន្នន័យគំរូដើមឡើងវិញដោយជោគជ័យ!', 'success');
+        }
+
+        function exportBackupJSON() {
+            const payload = {
+                exportedAt: new Date().toISOString(),
+                attendanceRecords,
+                savedStaffList
+            };
+            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Attendance_Backup_${getTodayISO()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('បានទាញយកឯកសារបម្រុងទុក JSON!', 'success');
+        }
+
+        function confirmClearAllData() {
+            document.getElementById('confirmModalTitle').textContent = 'លុបទិន្នន័យវត្តមានទាំងអស់?';
+            document.getElementById('confirmModalMessage').textContent = 
+                'តើអ្នកពិតជាចង់លុបកំណត់ត្រាវត្តមានទាំងអស់ចេញពី LocalStorage មែនទេ? សកម្មភាពនេះមិនអាចត្រឡប់ក្រោយបានទេ។';
+
+            pendingConfirmAction = () => {
+                attendanceRecords = [];
+                saveAttendanceToLocalStorage();
+                renderAttendance();
+                switchTab('dashboard');
+                showToast('បានលុបកំណត់ត្រាវត្តមានទាំងអស់!', 'info');
+            };
+
+            document.getElementById('confirmModal').classList.remove('hidden');
+        }
+
+        /******************************************************************
+         * 9. UI UTILITIES (MOBILE SIDEBAR, CLOCK, TOAST, ESCAPE HTML)
+         ******************************************************************/
+        function toggleMobileSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            const isHidden = sidebar.classList.contains('-translate-x-full');
+
+            if (isHidden) {
+                sidebar.classList.remove('-translate-x-full');
+                overlay.classList.remove('hidden');
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('hidden');
+            }
+        }
+
+        function updateLiveClock() {
+            const el = document.getElementById('liveClockDisplay');
+            if (!el) return;
+            const now = new Date();
+            el.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+
+            const colors = {
+                success: 'bg-emerald-700 text-white border-emerald-800',
+                error:   'bg-red-700 text-white border-red-800',
+                info:    'bg-slate-800 text-white border-slate-900'
+            };
+            const icons = {
+                success: 'fa-circle-check',
+                error:   'fa-circle-exclamation',
+                info:    'fa-circle-info'
+            };
+
+            toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg border text-xs sm:text-sm font-medium animate-modal ${colors[type] || colors.info}`;
+            toast.innerHTML = `
+                <i class="fa-solid ${icons[type] || icons.info} text-base"></i>
+                <span>${escapeHTML(message)}</span>
+            `;
+
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.25s ease';
+                setTimeout(() => toast.remove(), 250);
+            }, 3200);
+        }
+
+        function escapeHTML(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        // Close modals on Escape key press
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeAttendanceModal();
+                closeConfirmModal();
+            }
+        });
+    </script>
+</body>
+</html>
